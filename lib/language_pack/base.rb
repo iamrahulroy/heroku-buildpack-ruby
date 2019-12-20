@@ -40,6 +40,16 @@ class LanguagePack::Base
     end
   end
 
+  def bundler
+    self.class.bundler
+  end
+
+  def self.bundler
+    @@bundler ||= LanguagePack::Helpers::BundlerWrapper.new.tap { |b|
+      topic "Using #{b.gemfile} and #{b.lockfile} for Bundler"
+    }.install
+  end
+
   def instrument(*args, &block)
     self.class.instrument(*args, &block)
   end

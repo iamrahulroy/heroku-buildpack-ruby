@@ -167,7 +167,7 @@ WARNING
       plugins.each do |plugin, gem|
         warn "Injecting plugin '#{plugin}'"
       end
-      warn "Add 'rails_12factor' gem to your Gemfile to skip plugin injection"
+      warn "Add 'rails_12factor' gem to your #{bundler.gemfile} to skip plugin injection"
       LanguagePack::Helpers::PluginsInstaller.new(plugins.keys).install
     end
   end

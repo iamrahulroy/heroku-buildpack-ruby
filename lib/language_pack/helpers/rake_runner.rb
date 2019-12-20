@@ -65,10 +65,11 @@ class LanguagePack::Helpers::RakeRunner
     end
   end
 
-  def initialize(has_rake_gem = true)
+  def initialize(has_rake_gem = true, gemfile = "Gemfile")
     @has_rake_gem = has_rake_gem
+    @gemfile      = gemfile
     if !has_rake_installed?
-      @rake_tasks    = ""
+      @rake_tasks        = ""
       @rakefile_can_load = false
     end
   end
@@ -101,7 +102,7 @@ class LanguagePack::Helpers::RakeRunner
     if cannot_load_rakefile?
       msg =  "Could not detect rake tasks\n"
       msg << "ensure you can run `$ bundle exec rake -P` against your app\n"
-      msg << "and using the production group of your Gemfile.\n"
+      msg << "and using the production group of your #{@gemfile}.\n"
       msg << out
       raise CannotLoadRakefileError, msg if raise_on_fail
       puts msg
@@ -138,6 +139,6 @@ class LanguagePack::Helpers::RakeRunner
 private
 
   def has_rakefile?
-    %W{ Rakefile rakefile  rakefile.rb Rakefile.rb}.detect {|file| File.exist?(file) }
+    %W{Rakefile rakefile rakefile.rb Rakefile.rb}.detect {|file| File.exist?(file) }
   end
 end

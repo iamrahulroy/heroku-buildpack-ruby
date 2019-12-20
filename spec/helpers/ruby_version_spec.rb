@@ -127,7 +127,7 @@ describe "RubyVersion" do
     bundle_error_msg = "Zomg der was a problem in da gemfile"
     error_klass      = LanguagePack::Helpers::BundlerWrapper::GemfileParseError
     Hatchet::App.new("bad_gemfile_on_platform").in_directory_fork do |dir|
-      @bundler       = LanguagePack::Helpers::BundlerWrapper.new().install
+      @bundler       = LanguagePack::Helpers::BundlerWrapper.new.install
       expect { LanguagePack::RubyVersion.new(@bundler.ruby_version) }.to raise_error(error_klass, /#{Regexp.escape(bundle_error_msg)}/)
     end
   end
