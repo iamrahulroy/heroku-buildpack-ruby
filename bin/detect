@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ -f "$1/Gemfile" ]; then
+if [ -f "$1/Gemfile" ] || [ -f "$1/gems.rb" ]; then
   echo "Ruby"
   exit 0
 else

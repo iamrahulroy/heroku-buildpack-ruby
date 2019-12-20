@@ -15,4 +15,26 @@ describe "Bundler" do
       app.push!
     end
   end
+
+  it "deploys with gems.rb" do
+    before_deploy = Proc.new do
+      run!(%Q{mv Gemfile gems.rb})
+      run!(%Q{mv Gemfile.lock gems.locked})
+    end
+
+    Hatchet::Runner.new("default_ruby", before_deploy: before_deploy).deploy do |app|
+      expect(app.output).to match("Using gems.rb and gems.locked for Bundler")
+    end
+  end
+
+  it "does not deploy with both Gemfile and gems.rb" do
+    before_deploy = Proc.new do
+      run!(%Q{cp Gemfile gems.rb})
+    end
+
+    Hatchet::Runner.new("default_ruby", allow_failure: true, before_deploy: before_deploy).deploy do |app|
+      expect(app.output).to match("You have both a Gemfile and a gems.rb in your repository.")
+      expect(app).not_to be_deployed
+    end
+  end
 end

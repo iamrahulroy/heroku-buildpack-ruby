@@ -41,7 +41,7 @@ LanguagePack::ShellHelpers.user_env_hash["PATH"] = "#{build_dir}/bin:#{ENV["PATH
 LanguagePack::ShellHelpers.user_env_hash["GEM_PATH"] = LanguagePack::Ruby.slug_vendor_base
 
 bundler = LanguagePack::Helpers::BundlerWrapper.new(
-  gemfile_path: "#{build_dir}/Gemfile"
+  build_dir: build_dir
 )
 # load bundler
 bundler.install
