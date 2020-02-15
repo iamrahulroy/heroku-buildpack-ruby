@@ -103,6 +103,36 @@ describe "Ruby apps" do
       end
     end
   end
+
+  describe '.bundle/config detection' do
+    context 'BUNDLE_GEMS__CONTRIBSYS__COM is set' do
+      context '.bundle/config is not checked in' do
+        it "doesn't warn about .bundle/config" do
+          before_deploy = proc do
+            run! 'rm -rf .bundle'
+          end
+          config = { 'BUNDLE_GEMS__CONTRIBSYS__COM' => 'foo:bar' }
+
+          Hatchet::Runner.new('default_ruby', config: config, before_deploy: before_deploy).deploy do |app|
+            expect(app.output).not_to include('You have the `.bundle/config` file checked into your repository')
+          end
+        end
+      end
+
+      context '.bundle/config is checked in' do
+        it 'warns about .bundle/config' do
+          before_deploy = proc do
+            run! "mkdir -p .bundle && echo '---' > .bundle/config"
+          end
+          config = { 'BUNDLE_GEMS__CONTRIBSYS__COM' => 'foo:bar' }
+
+          Hatchet::Runner.new('default_ruby', config: config, before_deploy: before_deploy).deploy do |app|
+            expect(app.output).to include('You have the `.bundle/config` file checked into your repository')
+          end
+        end
+      end
+    end
+  end
 end
 
 describe "Raise errors on specific gems" do

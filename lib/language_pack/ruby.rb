@@ -83,6 +83,7 @@ WARNING
       # check for new app at the beginning of the compile
       new_app?
       Dir.chdir(build_path)
+      check_for_bundle_config
       remove_vendor_bundle
       warn_bundler_upgrade
       install_ruby
@@ -772,6 +773,23 @@ BUNDLE
     FileUtils.chmod(0755, shim_path)
   end
 
+  # This has to come before any bundle commands are executed since some env
+  # vars will create it.
+  def check_for_bundle_config
+    instrument 'ruby.check_for_bundle_config' do
+      if File.exist?("#{Dir.pwd}/.bundle/config")
+        warn(<<-WARNING, inline: true)
+You have the `.bundle/config` file checked into your repository
+It contains local state like the location of the installed bundle
+as well as configured git local gems, and other settings that should
+not be shared between multiple checkouts of a single repo. Please
+remove the `.bundle/` folder from your repo and add it to your `.gitignore` file.
+https://devcenter.heroku.com/articles/bundler-configuration
+WARNING
+      end
+    end
+  end
+
   # runs bundler to install the dependencies
   def build_bundler(default_bundle_without)
     instrument 'ruby.build_bundler' do
@@ -780,17 +798,6 @@ BUNDLE
         bundle_bin     = "bundle"
         bundle_command = "#{bundle_bin} install --without #{bundle_without} --path vendor/bundle --binstubs #{bundler_binstubs_path}"
         bundle_command << " -j4"
-
-        if File.exist?("#{Dir.pwd}/.bundle/config")
-          warn(<<-WARNING, inline: true)
-You have the `.bundle/config` file checked into your repository
- It contains local state like the location of the installed bundle
- as well as configured git local gems, and other settings that should
-not be shared between multiple checkouts of a single repo. Please
-remove the `.bundle/` folder from your repo and add it to your `.gitignore` file.
-https://devcenter.heroku.com/articles/bundler-configuration
-WARNING
-        end
 
         if bundler.windows_lockfile?
           warn(<<-WARNING, inline: true)
