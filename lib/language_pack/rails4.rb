@@ -110,7 +110,9 @@ WARNING
 
   def cleanup_assets_cache
     instrument "rails4.cleanup_assets_cache" do
-      LanguagePack::Helpers::StaleFileCleaner.new(default_assets_cache).clean_over(ASSETS_CACHE_LIMIT)
+      cleaner = LanguagePack::Helpers::StaleFileCleaner.new(default_assets_cache)
+      puts "Pruning asset cache to <= #{ASSETS_CACHE_LIMIT} bytes (current size: #{cleaner.total_size})"
+      cleaner.clean_over(ASSETS_CACHE_LIMIT)
     end
   end
 end
