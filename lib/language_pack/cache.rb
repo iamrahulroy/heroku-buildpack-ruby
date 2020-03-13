@@ -42,6 +42,41 @@ class LanguagePack::Cache
     copy (@cache_base + path), dest
   end
 
+  # Store a path as an archive, which is more efficient for directories
+  # with a lot of files (e.g. asset caches).
+  # @param [String] path relative directory to store as an archive
+  def store_archive(path)
+    return false unless File.exist?(path)
+    tar = archive_path(path)
+    tar.delete if tar.exist?
+    FileUtils.mkdir_p File.dirname(tar)
+    system("tar -cf #{tar} #{path}")
+  end
+
+  # Store a path as an archive if it has changed, based on directory size as
+  # reported by `du`, which is not a guarantee. Use only where necessary with
+  # large cache directories that won't cause problems if skipped.
+  # @param [String] path relative directory to store as an archive
+  # @param [Integer] previous_size the previous size of the directory from `load_archive`
+  def store_archive_if_changed(path, previous_size)
+    store_archive(path) if dir_size(path) != previous_size
+  end
+
+  # Load a directory from an archive
+  # @param [String] path relative directory path to restore
+  # @return [Integer] the size of the expanded directory, for use with `store_archive_if_changed`
+  def load_archive(path)
+    tar = archive_path(path)
+    return false unless tar.exist?
+    system("tar -xf #{tar}")
+    dir_size(path)
+  end
+
+  # Returns the archive file path given an app relative path
+  def archive_path(path)
+    (@cache_base + path).cleanpath.sub_ext(".tar")
+  end
+
   def load_without_overwrite(path, dest=nil)
     dest ||= path
     copy (@cache_base + path), dest, '-a -n'
@@ -56,6 +91,12 @@ class LanguagePack::Cache
     system("cp #{options} #{from}/. #{to}")
   end
 
+  def move(from, to)
+    return false unless File.exist?(from)
+    FileUtils.mkdir_p File.dirname(to)
+    system("mv #{from} #{File.dirname(to)}")
+  end
+
   # copy contents between to places in the cache
   # @param [String] source cache directory
   # @param [String] destination directory
@@ -68,5 +109,9 @@ class LanguagePack::Cache
   # @param [Boolean] true if the path exists in the cache and false if otherwise
   def exists?(path)
     File.exists?(@cache_base + path)
+  end
+
+  def dir_size(path)
+    `du -sb #{path}`.to_i
   end
 end

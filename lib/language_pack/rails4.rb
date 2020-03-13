@@ -62,6 +62,14 @@ WARNING
     "public/assets"
   end
 
+  def public_packs_folder
+    "public/packs"
+  end
+
+  def node_modules
+    "node_modules"
+  end
+
   def default_assets_cache
     "tmp/cache/assets"
   end
@@ -69,8 +77,8 @@ WARNING
   def cleanup
     super
     return if assets_compile_enabled?
-    return unless Dir.exist?(default_assets_cache)
-    FileUtils.remove_dir(default_assets_cache)
+    FileUtils.remove_dir(default_assets_cache) if Dir.exist?(default_assets_cache)
+    FileUtils.remove_dir(node_modules) if Dir.exist?(node_modules)
   end
 
   def run_assets_precompile_rake_task
@@ -87,7 +95,9 @@ WARNING
         topic("Preparing app for Rails asset pipeline")
 
         @cache.load_without_overwrite public_assets_folder
-        @cache.load default_assets_cache
+        @cache.load_without_overwrite public_packs_folder
+        assets_cache_size = @cache.load_archive default_assets_cache
+        node_modules_size = @cache.load_archive node_modules
 
         precompile.invoke(env: rake_env)
 
@@ -99,8 +109,12 @@ WARNING
           rake.task("assets:clean").invoke(env: rake_env)
 
           cleanup_assets_cache
+
+          puts "Moving compiled assets and asset cache to build cache"
           @cache.store public_assets_folder
-          @cache.store default_assets_cache
+          @cache.store public_packs_folder
+          @cache.store_archive_if_changed default_assets_cache, assets_cache_size
+          @cache.store_archive_if_changed node_modules, node_modules_size
         else
           precompile_fail(precompile.output)
         end
