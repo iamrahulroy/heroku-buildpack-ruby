@@ -103,8 +103,8 @@ class LanguagePack::Cache
     File.exists?(@cache_base + path)
   end
 
-  # Returns a hash of a directory's recursive filenames and mtimes.
+  # Returns a hash of a directory's recursive mtimes.
   def dir_hash(path)
-    `ls -laAgGR --time-style=+%s #{path} | awk '{print $4 $5}' | sha1sum | head -c 40`
+    `find #{path} -printf "%T@" | sha1sum | head -c 40`
   end
 end
