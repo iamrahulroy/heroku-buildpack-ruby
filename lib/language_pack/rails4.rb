@@ -96,8 +96,8 @@ WARNING
 
         @cache.load_without_overwrite public_assets_folder
         @cache.load_without_overwrite public_packs_folder
-        assets_cache_size = @cache.load_archive default_assets_cache
-        node_modules_size = @cache.load_archive node_modules
+        assets_cache_hash = @cache.load_archive default_assets_cache
+        node_modules_hash = @cache.load_archive node_modules
 
         precompile.invoke(env: rake_env)
 
@@ -113,8 +113,8 @@ WARNING
           puts "Moving compiled assets and asset cache to build cache"
           @cache.store public_assets_folder
           @cache.store public_packs_folder
-          @cache.store_archive_if_changed default_assets_cache, assets_cache_size
-          @cache.store_archive_if_changed node_modules, node_modules_size
+          @cache.store_archive_if_changed default_assets_cache, assets_cache_hash
+          @cache.store_archive_if_changed node_modules, node_modules_hash
         else
           precompile_fail(precompile.output)
         end

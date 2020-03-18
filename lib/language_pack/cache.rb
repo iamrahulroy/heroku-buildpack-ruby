@@ -53,23 +53,21 @@ class LanguagePack::Cache
     system("tar -cf #{tar} #{path}")
   end
 
-  # Store a path as an archive if it has changed, based on directory size as
-  # reported by `du`, which is not a guarantee. Use only where necessary with
-  # large cache directories that won't cause problems if skipped.
+  # Store a path as an archive only if it has changed, based on the hash returned by `load_archive`.
   # @param [String] path relative directory to store as an archive
-  # @param [Integer] previous_size the previous size of the directory from `load_archive`
-  def store_archive_if_changed(path, previous_size)
-    store_archive(path) if dir_size(path) != previous_size
+  # @param [String] previous_hash the previous hash of the directory from `load_archive`
+  def store_archive_if_changed(path, previous_hash)
+    store_archive(path) if dir_hash(path) != previous_hash
   end
 
   # Load a directory from an archive
   # @param [String] path relative directory path to restore
-  # @return [Integer] the size of the expanded directory, for use with `store_archive_if_changed`
+  # @return [String] a hash of the expanded directory contents, for use with `store_archive_if_changed`
   def load_archive(path)
     tar = archive_path(path)
     return false unless tar.exist?
     system("tar -xf #{tar}")
-    dir_size(path)
+    dir_hash(path)
   end
 
   # Returns the archive file path given an app relative path
@@ -91,12 +89,6 @@ class LanguagePack::Cache
     system("cp #{options} #{from}/. #{to}")
   end
 
-  def move(from, to)
-    return false unless File.exist?(from)
-    FileUtils.mkdir_p File.dirname(to)
-    system("mv #{from} #{File.dirname(to)}")
-  end
-
   # copy contents between to places in the cache
   # @param [String] source cache directory
   # @param [String] destination directory
@@ -111,7 +103,8 @@ class LanguagePack::Cache
     File.exists?(@cache_base + path)
   end
 
-  def dir_size(path)
-    `du -sb #{path}`.to_i
+  # Returns a hash of a directory's recursive filenames and mtimes.
+  def dir_hash(path)
+    `ls -laAgGR --time-style=+%s #{path} | awk '{print $4 $5}' | sha1sum | head -c 40`
   end
 end
