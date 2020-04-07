@@ -99,6 +99,15 @@ WARNING
         assets_cache_hash = @cache.load_archive default_assets_cache
         node_modules_hash = @cache.load_archive node_modules
 
+        webpacker_clobber = rake.task("webpacker:clobber")
+        webpacker_clean   = rake.task("webpacker:clean")
+
+        # webpacker:clean is not available on webpacker <= 4.1.0, so we fallback
+        # to clobber first before compiling, which is unideal.
+        unless webpacker_clean.is_defined?
+          webpacker_clobber.invoke(env: rake_env)
+        end
+
         precompile.invoke(env: rake_env)
 
         if precompile.success?
@@ -107,6 +116,9 @@ WARNING
 
           puts "Cleaning assets"
           rake.task("assets:clean").invoke(env: rake_env)
+          if webpacker_clean.is_defined?
+            webpacker_clean.invoke(env: rake_env)
+          end
 
           cleanup_assets_cache
 
