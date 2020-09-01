@@ -102,6 +102,7 @@ WARNING
         vendor_libpq
         install_bundler_in_app
         build_bundler("development:test")
+        build_bundler_dependencies_next("development:test") if env("INSTALL_DEPENDENCIES_NEXT")
         post_bundler
         create_database_yml
         install_binaries
@@ -781,7 +782,7 @@ BUNDLE
   end
 
   # runs bundler to install the dependencies
-  def build_bundler(default_bundle_without)
+  def build_bundler(default_bundle_without, install_dependencies_next: false)
     instrument 'ruby.build_bundler' do
       log("bundle") do
         bundle_without = env("BUNDLE_WITHOUT") || default_bundle_without
@@ -846,6 +847,14 @@ WARNING
           env_vars["BUNDLER_LIB_PATH"]             = "#{bundler_path}" if ruby_version.ruby_version == "1.8.7"
           env_vars["BUNDLE_DISABLE_VERSION_CHECK"] = "true"
 
+          if install_dependencies_next
+            if env("DEPENDENCIES_NEXT") == "1"
+              env_vars["DEPENDENCIES_NEXT"] = "0"
+            else
+              env_vars["DEPENDENCIES_NEXT"] = "1"
+            end
+          end
+
           puts "Running: #{bundle_command}"
           instrument "ruby.bundle_install" do
             bundle_time = Benchmark.realtime do
@@ -906,6 +915,17 @@ https://devcenter.heroku.com/articles/ruby-versions#your-ruby-version-is-x-but-y
         end
       end
     end
+  end
+
+  def build_bundler_dependencies_next(bundle_without)
+    # Bundler's plugin installation adds absolute paths to
+    # .bundle/plugin/index which breaks when the slug is deployed, so this
+    # replaces the absolute path with `/app`. $HOME would be less tightly
+    # coupled, but doesn't seem to work.
+    run!("sed -i 's|#{build_path}|/app|' .bundle/plugin/index")
+
+    puts "👢👢 Installing dependencies next"
+    build_bundler(bundle_without, install_dependencies_next: true)
   end
 
   def post_bundler
