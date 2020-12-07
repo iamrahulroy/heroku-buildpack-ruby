@@ -38,6 +38,23 @@ describe "Rails 4.x" do
     end
   end
 
+  it "caches node_modules and default_assets_cache" do
+    before_deploy = proc do |app|
+      puts `sed -i 's|cache_path: tmp/cache/webpacker|cache_path: tmp/cache/assets/webpacker|' config/webpacker.yml`
+      expect($?).to be_success
+    end
+
+    Hatchet::Runner.new("spec/fixtures/rails42_webpacker", before_deploy: before_deploy).deploy do |app|
+      run!(%Q{git commit --allow-empty -m "Deploy"})
+      app.push!
+
+      # Yarn shouldn't reinstall packages
+      expect(app.output).to include("success Already up-to-date.")
+      # Webpacker shouldn't recompile packs
+      expect(app.output).to include("Everything's up-to-date. Nothing to do")
+    end
+  end
+
   it "should detect rails successfully" do
     Hatchet::App.new('rails4-manifest').in_directory_fork do
       expect(LanguagePack::Rails4.use?).to eq(true)
