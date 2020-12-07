@@ -42,6 +42,39 @@ class LanguagePack::Cache
     copy (@cache_base + path), dest
   end
 
+  # Store a path as an archive, which is more efficient for directories
+  # with a lot of files (e.g. asset caches).
+  # @param [String] path relative directory to store as an archive
+  def store_archive(path)
+    return false unless File.exist?(path)
+    tar = archive_path(path)
+    tar.delete if tar.exist?
+    FileUtils.mkdir_p File.dirname(tar)
+    system("tar -cf #{tar} #{path}")
+  end
+
+  # Store a path as an archive only if it has changed, based on the hash returned by `load_archive`.
+  # @param [String] path relative directory to store as an archive
+  # @param [String] previous_hash the previous hash of the directory from `load_archive`
+  def store_archive_if_changed(path, previous_hash)
+    store_archive(path) if dir_hash(path) != previous_hash
+  end
+
+  # Load a directory from an archive
+  # @param [String] path relative directory path to restore
+  # @return [String] a hash of the expanded directory contents, for use with `store_archive_if_changed`
+  def load_archive(path)
+    tar = archive_path(path)
+    return false unless tar.exist?
+    system("tar -xf #{tar}")
+    dir_hash(path)
+  end
+
+  # Returns the archive file path given an app relative path
+  def archive_path(path)
+    (@cache_base + path).cleanpath.sub_ext(".tar")
+  end
+
   def load_without_overwrite(path, dest=nil)
     dest ||= path
     copy (@cache_base + path), dest, '-a -n'
@@ -68,5 +101,10 @@ class LanguagePack::Cache
   # @param [Boolean] true if the path exists in the cache and false if otherwise
   def exists?(path)
     File.exists?(@cache_base + path)
+  end
+
+  # Returns a hash of a directory's recursive mtimes.
+  def dir_hash(path)
+    `find #{path} -printf "%T@" | sha1sum | head -c 40`
   end
 end

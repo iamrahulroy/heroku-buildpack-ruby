@@ -3,7 +3,7 @@ require "language_pack/rails3"
 
 # Rails 4 Language Pack. This is for all Rails 4.x apps.
 class LanguagePack::Rails4 < LanguagePack::Rails3
-  ASSETS_CACHE_LIMIT = 52428800 # bytes
+  ASSETS_CACHE_LIMIT = 104857600 # bytes
 
   # detects if this is a Rails 4.x app
   # @return [Boolean] true if it's a Rails 4.x app
@@ -62,6 +62,14 @@ WARNING
     "public/assets"
   end
 
+  def public_packs_folder
+    "public/packs"
+  end
+
+  def node_modules
+    "node_modules"
+  end
+
   def default_assets_cache
     "tmp/cache/assets"
   end
@@ -69,8 +77,8 @@ WARNING
   def cleanup
     super
     return if assets_compile_enabled?
-    return unless Dir.exist?(default_assets_cache)
-    FileUtils.remove_dir(default_assets_cache)
+    FileUtils.remove_dir(default_assets_cache) if Dir.exist?(default_assets_cache)
+    FileUtils.remove_dir(node_modules) if Dir.exist?(node_modules)
   end
 
   def run_assets_precompile_rake_task
@@ -87,7 +95,18 @@ WARNING
         topic("Preparing app for Rails asset pipeline")
 
         @cache.load_without_overwrite public_assets_folder
-        @cache.load default_assets_cache
+        @cache.load_without_overwrite public_packs_folder
+        assets_cache_hash = @cache.load_archive default_assets_cache
+        node_modules_hash = @cache.load_archive node_modules
+
+        webpacker_clobber = rake.task("webpacker:clobber")
+        webpacker_clean   = rake.task("webpacker:clean")
+
+        # webpacker:clean is not available on webpacker <= 4.1.0, so we fallback
+        # to clobber first before compiling, which is unideal.
+        unless webpacker_clean.is_defined?
+          webpacker_clobber.invoke(env: rake_env)
+        end
 
         precompile.invoke(env: rake_env)
 
@@ -97,10 +116,17 @@ WARNING
 
           puts "Cleaning assets"
           rake.task("assets:clean").invoke(env: rake_env)
+          if webpacker_clean.is_defined?
+            webpacker_clean.invoke(env: rake_env)
+          end
 
           cleanup_assets_cache
+
+          puts "Moving compiled assets and asset cache to build cache"
           @cache.store public_assets_folder
-          @cache.store default_assets_cache
+          @cache.store public_packs_folder
+          @cache.store_archive_if_changed default_assets_cache, assets_cache_hash
+          @cache.store_archive_if_changed node_modules, node_modules_hash
         else
           precompile_fail(precompile.output)
         end
@@ -110,7 +136,9 @@ WARNING
 
   def cleanup_assets_cache
     instrument "rails4.cleanup_assets_cache" do
-      LanguagePack::Helpers::StaleFileCleaner.new(default_assets_cache).clean_over(ASSETS_CACHE_LIMIT)
+      cleaner = LanguagePack::Helpers::StaleFileCleaner.new(default_assets_cache)
+      puts "Pruning asset cache to <= #{ASSETS_CACHE_LIMIT} bytes (current size: #{cleaner.total_size})"
+      cleaner.clean_over(ASSETS_CACHE_LIMIT)
     end
   end
 end
